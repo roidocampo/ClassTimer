@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item type="id" name="main_layout" />
+    <item type="id" name="growing_circle" />
+    <item type="id" name="config_button" />
+    <item type="id" name="text_clock" />
+</resources>

@@ -14,8 +14,10 @@ import java.util.GregorianCalendar;
 
 
 public class TimePreference extends DialogPreference {
-    private Calendar calendar;
     private TimePicker picker = null;
+
+    public static final long DEFAULT_TIME = 2*60;
+    private long minutes = DEFAULT_TIME;
 
     public TimePreference(Context ctxt) {
         this(ctxt, null);
@@ -30,7 +32,6 @@ public class TimePreference extends DialogPreference {
 
         setPositiveButtonText("Set");
         setNegativeButtonText("Cancel");
-        calendar = new GregorianCalendar();
     }
 
     @Override
@@ -42,8 +43,8 @@ public class TimePreference extends DialogPreference {
     @Override
     protected void onBindDialogView(View v) {
         super.onBindDialogView(v);
-        picker.setCurrentHour(calendar.get(Calendar.HOUR_OF_DAY));
-        picker.setCurrentMinute(calendar.get(Calendar.MINUTE));
+        picker.setCurrentHour((int) minutes/60);
+        picker.setCurrentMinute((int) minutes%60);
     }
 
     @Override
@@ -51,12 +52,10 @@ public class TimePreference extends DialogPreference {
         super.onDialogClosed(positiveResult);
 
         if (positiveResult) {
-            calendar.set(Calendar.HOUR_OF_DAY, picker.getCurrentHour());
-            calendar.set(Calendar.MINUTE, picker.getCurrentMinute());
-
+            minutes = picker.getCurrentHour() * 60 + picker.getCurrentMinute();
             setSummary(getSummary());
-            if (callChangeListener(calendar.getTimeInMillis())) {
-                persistLong(calendar.getTimeInMillis());
+            if (callChangeListener(minutes)) {
+                persistLong(minutes);
                 notifyChanged();
             }
         }
@@ -72,15 +71,15 @@ public class TimePreference extends DialogPreference {
 
         if (restoreValue) {
             if (defaultValue == null) {
-                calendar.setTimeInMillis(getPersistedLong(System.currentTimeMillis()));
+                minutes = getPersistedLong(DEFAULT_TIME);
             } else {
-                calendar.setTimeInMillis(Long.parseLong(getPersistedString((String) defaultValue)));
+                minutes = Long.parseLong(getPersistedString((String) defaultValue));
             }
         } else {
             if (defaultValue == null) {
-                calendar.setTimeInMillis(System.currentTimeMillis());
+                minutes = DEFAULT_TIME;
             } else {
-                calendar.setTimeInMillis(Long.parseLong((String) defaultValue));
+                minutes = Long.parseLong((String) defaultValue);
             }
         }
         setSummary(getSummary());
@@ -88,9 +87,16 @@ public class TimePreference extends DialogPreference {
 
     @Override
     public CharSequence getSummary() {
-        if (calendar == null) {
-            return null;
+        if (minutes >= 12*60) {
+            if (minutes / 60 == 12)
+                return String.format("%d:%02d PM", 12, minutes % 60);
+            else
+                return String.format("%d:%02d PM", minutes / 60 - 12, minutes % 60);
+        } else {
+            if (minutes / 60 == 0)
+                return String.format("%d:%02d AM", 12, minutes % 60);
+            else
+                return String.format("%d:%02d AM", minutes / 60, minutes % 60);
         }
-        return DateFormat.getTimeFormat(getContext()).format(new Date(calendar.getTimeInMillis()));
     }
 }

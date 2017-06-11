@@ -1,8 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <CheckBoxPreference
+        android:key="class_enabled_1"
+        android:title="Class 1"
+        android:defaultValue="true" />
     <xyz.docampo.roi.classtimer.TimePreference
-        android:key="test_pref_time_1"
-        android:title="Test Time 1" />
+        android:key="class_start_1"
+        android:title="Class 1 Start" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_end_1"
+        android:title="Class 1 End" />
+
+    <CheckBoxPreference
+        android:key="class_enabled_2"
+        android:title="Class 2"
+        android:defaultValue="false" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_start_2"
+        android:title="Class 2 Start" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_end_2"
+        android:title="Class 2 End" />
+
+    <CheckBoxPreference
+        android:key="class_enabled_3"
+        android:title="Class 3"
+        android:defaultValue="false" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_start_3"
+        android:title="Class 3 Start" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_end_3"
+        android:title="Class 3 End" />
+
+    <CheckBoxPreference
+        android:key="class_enabled_4"
+        android:title="Class 4"
+        android:defaultValue="false" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_start_4"
+        android:title="Class 4 Start" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_end_4"
+        android:title="Class 4 End" />
+
+    <CheckBoxPreference
+        android:key="class_enabled_5"
+        android:title="Class 5"
+        android:defaultValue="false" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_start_5"
+        android:title="Class 5 Start" />
+    <xyz.docampo.roi.classtimer.TimePreference
+        android:key="class_end_5"
+        android:title="Class 5 End" />
 
 </PreferenceScreen>

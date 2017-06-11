@@ -2,10 +2,14 @@ package xyz.docampo.roi.classtimer;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.support.constraint.ConstraintLayout;
+import android.support.constraint.ConstraintSet;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -13,35 +17,59 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextClock;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener {
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+
+public class MainActivity extends AppCompatActivity
+        implements View.OnClickListener
+{
 
     ConstraintLayout mMainLayout;
-    MainView mMainView;
+    GrowingCircle mGrowingCircle;
     TextClock mTextClock;
     ConfigButton mConfigButton;
+
+    long mCircleUpdateDelay = 1000;
+    Handler mHandler;
+    Runnable mRunnable;
+
+    Calendar mCalendar;
+
+    int mNumClases = 5;
+    boolean[] mClassEnabled;
+    long[] mClassStart;
+    long[] mClassEnd;
+
+    Paint mCirclePaint;
+    int mCircleX = 0;
+    int mCircleY = 0;
+    float mCircleSize = -1f;
+    float mCircleRadius = 0f;
+
+    int mBlue   = 0xff48a7d9;
+    int mGreen  = 0xff93c35b;
+    int mYellow = 0xfffccb39;
+    int mRed    = 0xffed5c53;
+    int mGray   = 0xffececec;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         mMainLayout = new ConstraintLayout(this);
-/*
-        mMainView = new MainView(this);
-        mMainView.setLayoutParams(new ConstraintLayout.LayoutParams(
-                ConstraintLayout.LayoutParams.MATCH_PARENT,
-                ConstraintLayout.LayoutParams.MATCH_PARENT ));
-        mMainLayout.addView(mMainView);
-*/
-        mTextClock = new TextClock(this);
-        mTextClock.setLayoutParams(new ConstraintLayout.LayoutParams(
-                ConstraintLayout.LayoutParams.MATCH_PARENT,
-                ConstraintLayout.LayoutParams.MATCH_PARENT ));
-        mTextClock.setTextSize(80);
-        mTextClock.setTextColor(0xffececec);
+        mMainLayout.setId(R.id.main_layout);
 
+        mGrowingCircle = new GrowingCircle(this);
+        mGrowingCircle.setId(R.id.growing_circle);
+        mMainLayout.addView(mGrowingCircle);
+
+        mTextClock = new TextClock(this);
+        mTextClock.setId(R.id.text_clock);
         mMainLayout.addView(mTextClock);
 
         mConfigButton = new ConfigButton(this);
+        mConfigButton.setId(R.id.config_button);
         mMainLayout.addView(mConfigButton);
 
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -55,7 +83,100 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
         );
 
+        ConstraintSet constraintSet = new ConstraintSet();
+        constraintSet.clone(mMainLayout);
+        int[] sides = { ConstraintSet.TOP, ConstraintSet.BOTTOM, ConstraintSet.LEFT, ConstraintSet.RIGHT };
+        int[] widgets = { mGrowingCircle.getId(), mTextClock.getId() };
+        for (int side : sides) {
+            for (int widget : widgets) {
+                constraintSet.connect(widget, side, mMainLayout.getId(), side, 30);
+            }
+        }
+        constraintSet.applyTo(mMainLayout);
+
+        mTextClock.setTextSize(74);
+        mTextClock.setFormat12Hour("h:mm");
+        mTextClock.setFormat24Hour("h:mm");
+        mTextClock.setTextColor(mGray);
+
         setContentView(mMainLayout);
+
+        mCalendar = new GregorianCalendar();
+        mClassEnabled = new boolean[mNumClases];
+        mClassStart = new long[mNumClases];
+        mClassEnd = new long[mNumClases];
+
+        mCirclePaint = new Paint();
+        mCirclePaint.setStyle(Paint.Style.FILL);
+        mCirclePaint.setColor(mRed);
+
+        mHandler = new Handler();
+        mRunnable = new Runnable() {
+            @Override
+            public void run() {
+                updateCircle();
+                mHandler.postDelayed(mRunnable, mCircleUpdateDelay);
+            }
+        };
+
+        updatePreferences();
+        mHandler.post(mRunnable);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updatePreferences();
+        mHandler.post(mRunnable);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mHandler.removeCallbacks(mRunnable);
+    }
+
+    private void updatePreferences() {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        for (int i=0; i<mNumClases; ++i) {
+            mClassEnabled[i] = prefs.getBoolean(String.format("class_enabled_%d",i+1), false);
+            mClassStart[i] = prefs.getLong(String.format("class_start_%d",i+1), TimePreference.DEFAULT_TIME);
+            mClassEnd[i] = prefs.getLong(String.format("class_end_%d",i+1), TimePreference.DEFAULT_TIME);
+        }
+    }
+
+    private void updateCircle() {
+        Calendar now = new GregorianCalendar();
+        float currentTime = 0f
+                + now.get(Calendar.HOUR_OF_DAY) * 60
+                + now.get(Calendar.MINUTE)
+                + now.get(Calendar.SECOND) / 60f;
+        for (int i=0; i<mNumClases; ++i) {
+            if (mClassEnabled[i]) {
+                if (currentTime >= (mClassStart[i] - 10)
+                        && currentTime <= mClassEnd[i] + 10) {
+                    mCircleSize = (currentTime - mClassStart[i]) * 1f / (mClassEnd[i] - mClassStart[i]);
+                    mCircleRadius = (1f - mCircleSize) * 0.54f * mCircleY + mCircleSize * 1.025f * mCircleY;
+                    if (currentTime >= mClassEnd[i] - 3)
+                        mCirclePaint.setColor(mRed);
+                    else if (currentTime >= mClassEnd[i] - 10)
+                        mCirclePaint.setColor(mYellow);
+                    else if (mCircleSize >= .5f)
+                        mCirclePaint.setColor(mGreen);
+                    else
+                        mCirclePaint.setColor(mBlue);
+                    mGrowingCircle.invalidate();
+                    return;
+                }
+
+            }
+        }
+        if (mCircleSize >= -.5f) {
+            mCircleSize = -1f;
+            mCircleRadius = 0;
+            mCirclePaint.setColor(Color.BLACK);
+            mGrowingCircle.invalidate();
+        }
     }
 
     public void onClick(View v) {
@@ -65,22 +186,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private class ConfigButton extends View {
 
-        int mGray   = 0xffececec;
         int desiredWidth = 150;
         int desiredHeight = 150;
+        Paint mPaint;
 
         public ConfigButton(Context context) {
             super(context);
             setOnClickListener((OnClickListener) context);
+            mPaint = new Paint();
+            mPaint.setStyle(Paint.Style.FILL);
+            mPaint.setColor(mGray);
         }
 
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
-            Paint paint = new Paint();
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(mGray);
-            canvas.drawCircle(60,60,10,paint);
+            canvas.drawCircle(60, 60, 10, mPaint);
         }
 
         @Override
@@ -114,39 +235,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private class MainView extends View {
+    private class GrowingCircle extends View {
 
-        Paint mClockPaint;
-        int mClockX = 0;
-        int mClockY = 0;
-
-        Paint mCirclePaint;
-        int mCircleX = 0;
-        int mCircleY = 0;
-
-        int mBlue   = 0xff48a7d9;
-        int mGreen  = 0xff93c35b;
-        int mYellow = 0xfffccb39;
-        int mRed    = 0xffed5c53;
-        int mGray   = 0xffececec;
-
-        public MainView(Context context) {
+        public GrowingCircle(Context context) {
             super(context);
-
-            mClockPaint = new Paint();
-            mClockPaint.setStyle(Paint.Style.FILL);
-            mClockPaint.setColor(mGray);
-            mClockPaint.setTextSize(200);
-            mClockPaint.setTextAlign(Paint.Align.CENTER);
-
-            mCirclePaint = new Paint();
-            mCirclePaint.setStyle(Paint.Style.FILL);
-            mCirclePaint.setColor(mBlue);
         }
 
         @Override protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-            mClockX = w/2;
-            mClockY = h/2;
             mCircleX = w/2;
             mCircleY = 2*h;
         }
@@ -155,9 +250,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             super.onDraw(canvas);
 
             canvas.drawColor(Color.BLACK);
-            canvas.drawCircle(mCircleX, mCircleY, 0.8f * mCircleY, mCirclePaint);
-            canvas.drawText("10:30", mClockX, mClockY, mClockPaint);
-
+            if (mCircleSize >= -.5f)
+                canvas.drawCircle(mCircleX, mCircleY, mCircleRadius, mCirclePaint);
         }
     }
 
