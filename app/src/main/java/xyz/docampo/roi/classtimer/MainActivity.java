@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity
         }
         constraintSet.applyTo(mMainLayout);
 
-        mTextClock.setTextSize(74);
+        mTextClock.setTextSize(100);
         mTextClock.setFormat12Hour("h:mm");
         mTextClock.setFormat24Hour("h:mm");
         mTextClock.setTextColor(mGray);
